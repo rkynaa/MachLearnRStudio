@@ -307,7 +307,7 @@ abline(model_1,col = "red")
 
 1. Make a linear regression model to know how much `gdp` influence `inequality`
 ```{r}
-
+model_2 = lm(formula = inequality ~ gdp, data = crime.new)
 ```
 
 x -> gdp
@@ -316,24 +316,29 @@ y -> inequality (tingkat kesenjangan pendapatan)
 
 2. How the results of the model
 ```{r}
-
+model_2 %>% 
+  summary()
 ```
 
 a. Model regesi yang diperoleh:
 
+> Inequality: 386.03058 + (-0.36551)*GDP
 
 b. Pengaruh variabel prediktor terhadap target
 
 - H0: gdp tidak mempengaruhi inequality
 - H1: gdp mempengaruhi inequality
 
+> P-Value < Alpha -> Tolah H0 -> GDP mempengaruhi Inequality
+
 c. Goodness of fit
 
-R-Squared = ?
+> R-Squared = 0.7815 -> 78.15 % menggambarkan model Inequality yang diperngaruhi oleh GDP
 
 ```{r}
 # Visualizing fitting line
-
+plot(crime.new$gdp, crime.new$inequality)
+abline(model_2,col="blue")
 ```
 
 

@@ -414,12 +414,13 @@ If one day, we get sales amount 4797 dolar. How much the profit we get?
 
 We also can use `predict()` to get profit amount
 ```{r}
-
+predict(object = model_1, newdata = data.frame(Sales = c(4797, 5120, 3850, 2020, 15, 2, 212)))
 ```
 
 Add one column in `copiers_no_outlier` data that contain Profit prediction from simple model
 ```{r}
-
+copiers_no_outlier$predicted <- predict(object = model_1, newdata = copiers_no_outlier)
+copiers_no_outlier
 ```
 
 ## Model Evaluation
@@ -427,34 +428,46 @@ Add one column in `copiers_no_outlier` data that contain Profit prediction from 
 Calculating error
 ```{r}
 # error = actual - predicted
-
+copiers_no_outlier$error <- copiers_no_outlier$Profit - copiers_no_outlier$predicted
+copiers_no_outlier$error
 ```
 
 visit this nice [link](https://towardsdatascience.com/what-are-the-best-metrics-to-evaluate-your-regression-model-418ca481755b)
 
 calculation MSE, RMSE, MAE manually
 ```{r}
-# MSE (mean square error)
-
+# MSE (mean square error) (Square the error, and then average it)
+mean(copiers_no_outlier$error^2)
 ```
+> Kelemahan MSE: Tidak bisa langsung merepresentasikan volume
+> Bisia digunakan untuk membandingkan hasil model lain
+> Semakin rendah, semakin baik
+
 
 ```{r}
 # RMSE (root mean square error)
-
+sqrt(mean(copiers_no_outlier$error^2))
 ```
-
+> Ketika diketahui RMSE: 140.02, artinya dari hasil prediksi, actual value berada diantara +- hasil prediksi
+> Seperti MSE, bisa digunakan untuk membandingkan hasil model lain
+> Semakin rendah, semakin baik
 
 ```{r}
 #MAE (mean absolute error)
-
+mean(abs(copiers_no_outlier$error))
 ```
+> Ketika diketahui MAE: 105.84, artinya dari hasil prediksi, actual value berada diantara +- 105.84 hasil prediksi
+> Seperti RMSE, bisa digunakan untuk membandingkan hasil model lain
+> Semakin rendah, semakin baik
 
+RMSE sangat sensitif terhadap error. Semakin besar error, hasilnya semakin besar. MAE tidak sensitif terhadap value error.
 
 Calculate RMSE and MAE using `MLmetrics` package
 ```{r}
 library(MLmetrics)
-RMSE(y_pred = copiers_new$predicted, y_true = copiers_new$Profit)
-MAE(y_pred = copiers_new$predicted, y_true = copiers_new$Profit)
+MSE(y_pred = copiers_no_outlier$predicted, y_true = copiers_no_outlier$Profit)
+RMSE(y_pred = copiers_no_outlier$predicted, y_true = copiers_no_outlier$Profit)
+MAE(y_pred = copiers_no_outlier$predicted, y_true = copiers_no_outlier$Profit)
 ```
 
 
@@ -462,12 +475,15 @@ MAE(y_pred = copiers_new$predicted, y_true = copiers_new$Profit)
 
 1. From linear regression model (how much `gdp` influence `inequality`) you have created before, predict "inequality" value and store it in `prediction` object
 ```{r}
-
+model_crime <- lm(formula = inequality ~ gdp, data = crime)
+prediction <- predict(object = model_crime, newdata = crime)
+error <- crime$inequality - prediction
 ```
 
 2. Do a model evaluation by calculate RMSE and MAE
 ```{r}
-
+RMSE(y_pred = prediction, y_true = crime$inequality)
+MAE(y_pred = prediction, y_true = crime$inequality)
 ```
 
 
@@ -487,19 +503,23 @@ plot(copiers$Sales, copiers$Profit)
 
 Kita akan membuat model regresi linier dengan menggunakan seluruh data (termasuk outlier)
 ```{r}
-
+model_outlier <- lm(formula = Profit ~ Sales, data = copiers.new)
 ```
 
 Kita akan coba bandingkan model regresi linier tanpa dan dengan outlier
 ```{r}
-
+plot(copiers.new$Sales, copiers.new$Profit)
+abline(model_outlier, col="red")
+abline(model_1, col="blue")
 ```
 
 Berdasarkan plot di atas diketahui bahwa outlier pada data copiers tidak mempengaruhi garis regresi yang dibentuk/low influence (jika dilihat garis regresi model tanpa dan dengan outlier) hampir sejajar.  Kita akan coba mengecek nilai goodness of fit nya.
 
 Perbandingan goodness of fit model tanpa dan dengan outlier
 ```{r}
+summary(model_1)$r.squared
 
+summary(model_outlier)$r.squared
 ```
 
 
@@ -507,7 +527,9 @@ Perbandingan goodness of fit model tanpa dan dengan outlier
 
 1. Buatlah model linier regresi dengan nilai outlier yang lebih ekstrem, yaitu dengan menambahkan nilai Sales pada observasi ke-59 dengan 3000.
 ```{r}
-
+copiers.new2 <- copiers.new
+copiers.new2[59, "Sales"] <- copiers.new2[59, "Sales"] + 3000
+copiers.new2[59, ]
 ```
 
 2. Bandingkan model linier regresi  
@@ -516,7 +538,7 @@ Perbandingan goodness of fit model tanpa dan dengan outlier
 - Dengan outlier `(model_outlier)`
 - Dengan outlier yang lebih ekstrim `(model_outlier3000)`
 ```{r}
-
+model_outlier3000 <- lm(formula = Profit ~ Sales, data = copiers.new2)
 ```
 
 3. Bandingkan goodness of fit model linier regresi  
@@ -526,6 +548,10 @@ Perbandingan goodness of fit model tanpa dan dengan outlier
 - Dengan outlier yang lebih ekstrim `(model_outlier3000)`
 ```{r}
 
+plot(copiers.new$Sales, copiers.new$Profit)
+abline(model_outlier, col="red")
+abline(model_1, col="blue")
+abline(model_outlier3000, col="green")
 ```
 
 
