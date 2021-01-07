@@ -1,0 +1,1220 @@
+---
+title: "RM: In-class Midas materials"
+author: "Joe Cristian"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output: 
+  html_document:
+    theme: flatly
+    higlight: zenburn
+    toc: true
+    toc_float:
+      collapsed: false
+    number_sections: true
+    df_print: paged
+    css: assets/style.css
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+# Background {.tabset}
+
+## Libraries and Setup
+
+```{r setup}
+# chunk options
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  comment = "#>"
+)
+
+# scientific notation
+options(scipen = 9999)
+```
+
+```{r}
+# import libs
+library(tidyverse)
+library(lubridate)
+library(GGally)
+library(MLmetrics)
+library(lmtest)
+library(car)
+library(plotly)
+```
+
+
+```{r out.width="100%", fig.align='center', echo=FALSE}
+knitr::include_graphics("assets/cheatsheet.png")
+```
+
+
+```{r out.width="100%", fig.align='center', echo=FALSE}
+knitr::include_graphics("assets/RM.png")
+```
+
+
+Import the data to R
+```{r}
+copiers <- read.csv("data_input/copiers.csv") 
+```
+
+Check data structure
+```{r}
+glimpse(copiers)
+```
+
+Profit -> Target variabel
+
+
+
+
+
+
+
+Check missing data
+```{r}
+colSums(is.na(copiers))
+
+```
+
+
+Data cleansing
+
+
+order.date -> date
+ship.date -> date
+sub.category -> factor
+ship.mode -> factor
+segment -> factor
+category -> factor
+
+hapus kolom:
+row.id
+order.id
+customer.id
+product.id
+
+```{r}
+summary(copiers)
+```
+
+
+```{r}
+library(tidyverse) # you can also use `dplyr`
+library(lubridate)
+
+
+copiers_new <- copiers %>% 
+  select(-c(Row.ID,Order.ID,Customer.ID,Product.ID,Category,Sub.Category)) %>% 
+  mutate(Order.Date = mdy(Order.Date),
+         Ship.Date = mdy(Ship.Date),
+         Ship.Mode = as.factor(Ship.Mode),
+         Segment = as.factor(Segment))
+
+copiers_new
+
+```
+
+
+## EDA
+
+We want to know how much `Sales` influence `Profit`. Before conducting regression analysis, we have to look at the data conditions (how the relation between `Sales` and `Profit`)
+
+We can see the relation between two variables with scatter plot
+```{r}
+plot(copiers_new$Sales,copiers_new$Profit)
+```
+
+
+
+Based on the plot above we know there is an outlier and we have to remove it. We also know if sales increase, profit also increase. We can confirm it by calculating the correlation
+```{r}
+# remove outlier
+copiers_no_outlier <- copiers_new %>% 
+  filter(Sales < 4000)
+  
+plot(x= copiers_no_outlier$Sales, y = copiers_no_outlier$Profit)
+```
+
+```{r}
+# calculating the correlation
+cor(copiers_no_outlier$Sales,copiers_no_outlier$Profit)
+```
+
+H0: X tidak berpengaruh terhadap Y
+H1: X berpengaruh terhadap Y
+
+ketika p-value < alpha, tolak h0
+* umumnya alpha 0.05
+
+```{r}
+cor.test(copiers_no_outlier$Sales,copiers_no_outlier$Profit)
+```
+
+> p-value < alpha: Tolak H0
+Sales berpengaruh signifikan terhadap Profit
+
+
+```{r}
+library(GGally)
+ggcorr(copiers_no_outlier,label = T)
+
+```
+
+
+
+**Dive Deeper**
+
+1. Do the data preparation steps for `crime` dataset
+
+a. Import `crime` dataset from data_input folder to R
+```{r}
+crime <- read.csv("data_input/crime.csv")
+crime
+
+# renaming the column names of "crime" data
+names(crime) <- c("X" ,"percent_m", "is_south", "mean_education", "police_exp60", "police_exp59", "labour_participation", "m_per1000f", "state_pop", "nonwhites_per1000", "unemploy_m24", "unemploy_m39", "gdp", "inequality", "prob_prison", "time_prison", "crime_rate")
+
+crime
+```
+
+The dataset was collected in 1960 and a full description of the dataset wasn't conveniently available. I use the description I gathered from the authors of the MASS package. After you rename the dataset, the variables are:  
+- `percent_m`: percentage of males aged 14-24
+- `is_south`: whether it is in a Southern state. 1 for Yes, 0 for No.  
+- `mean_education`: mean years of schooling  
+- `police_exp60`: police expenditure in 1960  
+- `police_exp59`: police expenditure in 1959
+- `labour_participation`: labour force participation rate  
+- `m_per1000f`: number of males per 1000 females  
+- `state_pop`: state population  
+- `nonwhites_per1000`: number of non-whites resident per 1000 people  
+- `unemploy_m24`: unemployment rate of urban males aged 14-24  
+- `unemploy_m39`: unemployment rate of urban males aged 35-39  
+- `gdp`: gross domestic product per head  
+- `inequality`: income inequality  
+- `prob_prison`: probability of imprisonment  
+- `time_prison`: avg time served in prisons  
+- `crime_rate`: crime rate in an unspecified category
+
+b. Check data structure and missing data from `crime` dataset
+```{r}
+glimpse(crime)
+```
+
+
+c. Do data cleansing steps for `crime` dataset
+
+- Delete unused variable in `crime` dataset
+- Adjust the data types of `crime` dataset
+
+```{r}
+crime <- crime %>% 
+  select(-X) %>% 
+  mutate(is_south = as.factor(is_south))
+
+crime
+```
+
+2. We want to know how much `gdp` influence `inequality`. Before conducting regression analysis, do the EDA steps to look at the data conditions (how the relation between `gdp` and `inequality`). You can use scatter plot or calculate the correlaion
+```{r}
+plot(crime$gdp, crime$inequality)
+```
+
+
+
+```{r}
+ggcorr(crime,label = T)
+```
+
+H0  = GDP tidak berpengaruh ke Inequality
+H1 = GDP berpengaruh kepada inequelaity
+
+```{r}
+cor.test(crime$gdp,crime$inequality)
+```
+
+alpha = 0.05
+> p-value < alpha
+Tolak H0
+GDP Berpengaruh secara signifikan terhadap inequality
+
+
+
+
+# Regression Model I
+## Simple Linear Regression
+
+Before we predicting `Profit` based on `Sales`, we try to see how linear regression predicts a target if there are no predictors. We can use `lm()` function and add some parameter:
+
+- `formula`: y ~ x
+- `data`: the data used
+
+```{r}
+# model without predictor (x)
+model_none <- lm(formula = Profit ~ 1, data = copiers_no_outlier)
+
+summary(model_none)
+```
+
+
+
+Based on the output above we get formula:
+
+$$y = b0$$
+
+$$Profit = 418.41$$
+
+
+```{r}
+round(mean(copiers_no_outlier$Profit),2)
+```
+
+
+**Summary**
+
+- Ketika kita ingin memprediksi profit dengan tidak ada prediktor, prediksi kita adalah *418.41* alias mean dari target variabel
+- kenapa mean? karena mean dari target ariabel menghasilkan error/residual paling rendah
+
+
+
+Bisnis problem: how much **sales** influence **profit**? Berapa profit yang diperoleh, jika diketahui sales sebesar $2?
+
+Regression model between `Sales` and `Profit`
+```{r}
+model_1 <- lm(formula = Profit ~ Sales,data = copiers_no_outlier)
+  
+summary(model_1)
+```
+
+## Understanding Output
+
+1. Model regesi yang diperoleh:
+
+$$ y = b0 + b1 x$$
+
+$$ Profit = b0 + b1 Sales$$
+
+b0 = potongan garis y ketika x = 0
+b1 = slope(kemiringan)
+
+
+$$Profit = -83.54810 + 0.39444 * Sales$$
+
+> Setiap kenaikan 1 satuan Sales, profit naik sebesar 0.39444
+
+
+
+
+
+```{r}
+profit_1 <- -83.54810 + 0.3944*2750
+profit_1
+```
+
+
+2. Pengaruh variabel prediktor terhadap target
+
+- H0: Sales tidak mempengaruhi Profit 
+- H1: Sales mempengaruhi Profit
+
+Tolak H0 jika p-value (peluang kesalahan) < alpha (5%). Berdasarkan output di atas diperoleh p-value (<0.0000000000000002), sehingga dapat disimpulkan bahwa Sales mempengaruhi Profit.
+
+Berdasarkan model yang sudah dibuat, diketahui bahwa:
+alpa = 0.05
+> P-value dari sales < alpha
+Tolak H0
+Sales mempengaruhi profit secara signifikan
+
+
+3. Goodness of fit
+
+Mengukur apakah garis regresi yang dibuat sudah fit/pas menggambarkan titik observasi di seitar garis tersebut. **0 <= R-Squared <= 1**. Pada umumnya nilai R-Squared 0.7 (70%) sudah dianggap cukup, namun biasanya dihubungkan juga dengan bisnis problem yang sedang dianalisa.
+
+Dari hasil summary model, diketahui r-squared  = 0.8514 (85.14%)
+> Sales menggambarkan variasi profit sebesar 85.14%
+> 14.86% yang lain dijelaskan oleh variabel lain (pengaruh diluar model)
+
+
+```{r}
+plot(copiers_no_outlier$Sales,copiers_no_outlier$Profit)
+abline(model_1,col="red")
+```
+
+**summary**
+
+1. Machine Learning secara umum terbagi menjadi 2 analisa"
+- *Supervised Learning*: ada target variable/target prediksi (umumnya untuk memprediksi)
+  - classification: target bertipe kategorikal
+  - regression: target bertipe numerik
+  
+- *Unsupervised Learning:* tidak ada target variable (umumnya hanya untuk memahami pattern data)
+
+2. inti dari pembuatan linear model adalah bagaimana kita menggambarkan garis linear yang mempunyai error/residual paling rendah   
+
+3. Ketika membuat model linear tanpa menggunakan prediktor, model akan memprediksi menggunakan mean dari target variabel. kenapa mean? karena mean mempunyai angka error/residual paling rendah
+
+4. formula linear model: y = b0 + b1*x
+misal: Profit = -83.54810 + 0.39444 * Sales
+artinya: setiap 1 satuan sales, menaikkan profit sebesar 0.3944 (b1)
+
+
+5. goodnes of fit: seberapa baik variabel prediktor menjelaskan variansi dari variabel target. ukuran goodnes of fit dapat diketahui dari nilai r-squared
+misal: r-squared: 0.8435
+artinya: model yang sudah dibuat menggambarkan variansi prediktor terhadap target sebesar 84.3%. sisa 15.6% lainnya dijelaskan oleh variabel lain
+
+
+--- end of day 1 ---
+
+
+
+**Dive Deeper**
+
+
+1. Make a linear regression model to know how much `gdp` influence `inequality`
+```{r}
+head(crime)
+ggcorr(crime,label = T)
+
+model_crime <- lm(formula = inequality ~ gdp, data = crime)
+```
+
+x -> gdp
+y -> inequality (tingkat kesenjangan pendapatan)
+
+
+2. How the results of the model
+```{r}
+summary(model_crime)
+```
+
+a. Model regesi yang diperoleh:
+y = b0 + b1*x
+$$Inequality = 386.03058 - 0.36551 * gdp$$
+
+> setiap 1 gdp mengurangi inequality sebesar 0.36551
+> jika tidak ada gdp, inequality sebesar 386.03058 
+
+
+b. Pengaruh variabel prediktor terhadap target
+
+- H0: gdp tidak mempengaruhi inequality
+- H1: gdp mempengaruhi inequality
+
+> Tolak H0
+> gdp mempengaruhi inequality secara signifikan
+
+c. Goodness of fit
+
+R-Squared = 0.7815
+> GDP menggambarkan variasi Inequality sebesar 78.15%, sementara 21.85% di digambarkan dengan variable lain diluar model
+
+
+
+```{r}
+# Visualizing fitting line
+plot(crime$gdp,crime$inequality)
+abline(model_crime,col="red")
+```
+
+## Predicting New Data
+If one day, we get sales amount 4797 dolar. How much the profit we get?
+$$Profit = -83.54810 + 0.39444 * Sales$$
+
+```{r}
+Profit = -83.54810 + 0.39444 * 4797
+Profit
+```
+
+We also can use `predict()` to get profit amount
+
+If one day, we get sales amount 4797,5120,3850,2020,15,2,212 dolar. How much the profit we get?
+```{r}
+# prediksi ketika sales = 4797
+predict(object = model_1,newdata = data.frame(Sales = 4797))
+
+# prediksi ketika diterima sales lebih dari 1 value
+predict(object = model_1,newdata = data.frame(Sales = c(4797,5120,3850,2020,15,2,212)))
+```
+
+parameter newdata didalam function `predict()` menerma data dalam bentuk dataframe
+
+Add one column in `copiers_no_outlier` data that contain Profit prediction from simple model
+```{r}
+copiers_no_outlier$predicted <- predict(object = model_1, newdata = copiers_no_outlier)
+
+copiers_no_outlier
+```
+
+residual/error = selisih value actual - value prediksi
+
+## Model Evaluation
+
+Calculating error
+```{r}
+# error = actual - predicted
+copiers_no_outlier$error <- copiers_no_outlier$Profit - copiers_no_outlier$predicted
+copiers_no_outlier
+```
+
+[summary]
+
+1. error/residual = selisih data actual dengan data prediksi
+
+2. ide dari ordinary least square(OLS) akan mencari garis regresi yang menghasilkan nilai error terkecil
+
+3. Nilai error bisa dilihat dari MAE, RMSE, atau MSE
+
+4. hasil prediksi diperoleh dari persamaan model regresi `y = beta0+beta1*x1`
+
+
+visit this nice [link](https://towardsdatascience.com/what-are-the-best-metrics-to-evaluate-your-regression-model-418ca481755b)
+
+calculation MSE, RMSE, MAE manually
+```{r}
+# MSE (mean square error)
+# error yang dikuadratkan lalu dirata-ratakan
+
+mean(copiers_no_outlier$error^2)
+```
+
+> kelemahan dari MSE kita tidak bisa langsung memrepresentasikan valuenya
+> MSE digunakan untuk membandingkan dengan hasil model yang lain
+> MSE semakin rendah semakin baik
+
+model 1 = MSE: 19600
+model 2 = MSE: 12000
+
+```{r}
+# RMSE (root mean square error)
+
+sqrt(mean(copiers_no_outlier$error^2))
+```
+
+> ketika diketahui RMSE 140.02 artinya dari hasil prediksi, actual value berada di antara +- 140.02 hasil prediksi
+> RMSE juga bisa digunakan untuk membandingkan model lain.
+> RMSE semakin rendah semakin baik
+
+implementasi RMSE:
+> jika hasil prediksi 1000
+> actual value ada di 1000 - 140.02
+> actual value ada di 1000 + 140.02
+
+
+```{r}
+# MAE (mean absolute error)
+# error yang di absolutkan lalu dirata-ratakan
+
+mean(abs(copiers_no_outlier$error))
+```
+
+
+> ketika diketahui MAE 105.84 artinya dari hasil prediksi, actual value berada di antara +- 105.84 hasil prediksi
+> MAE juga bisa digunakan untuk membandingkan model lain.
+> MAE semakin rendah semakin baik
+
+implementasi MAE:
+> jika hasil prediksi 1000
+> actual value ada di 1000 - 105.84
+> actual value ada di 1000 + 105.84
+
+
+RMSE dan MSE itu sangat sensitif terhadap besar error. artinya jika ada error yang besar, hasil RMSE akan terlihat besar. Sedangkan MAE tidak terlalu sensitif terhadap besar error
+
+
+
+Calculate RMSE and MAE using `MLmetrics` package
+```{r}
+library(MLmetrics)
+
+MSE(y_pred = copiers_no_outlier$predicted, y_true = copiers_no_outlier$Profit)
+RMSE(y_pred = copiers_no_outlier$predicted, y_true = copiers_no_outlier$Profit)
+MAE(y_pred = copiers_no_outlier$predicted, y_true = copiers_no_outlier$Profit)
+```
+
+
+**Dive Deeper**
+
+1. From linear regression model (how much `gdp` influence `inequality`) you have created before, predict "inequality" value and store it in `prediction` object
+```{r}
+crime
+model_crime <- lm(formula = inequality ~ gdp, data = crime)
+
+crime$predicted <- predict(object = model_crime, newdata = crime)
+crime
+```
+
+2. Do a model evaluation by calculate RMSE and MAE
+```{r}
+MSE(y_pred = crime$predicted, y_true = crime$inequality)
+RMSE(y_pred = crime$predicted, y_true = crime$inequality)
+MAE(y_pred = crime$predicted, y_true = crime$inequality) 
+```
+
+```{r}
+range(crime$inequality)
+```
+
+
+pro tip:
+shortcut menggandakan 1 line = ctrl + shift + D
+
+## Leverage vs Influence
+
+**Leverage** adalah nilai yang letaknya jauh dari letak observasi-observasi lainnya, sering disebut sebagai **outlier**. Nilai leverage dapat mempengaruhi model linier regresi atau pun tidak.
+
+- Ketika leverage mempengaruhi model linier regresi: high influence
+- Ketika leverage tidak mempengaruhi model linier regresi: low influence
+
+Nilai leverage yang menghasilkan peningkatan nilai R-squared, sebaiknya tetap dipertahankan ketika membuat model. Namun, jika nilai leverage ternyata mengakibatkan penurunan nilai R-squared, sebaiknya nilai tersebut tidak diikutsertakan ketika membuat model (dibuang).
+
+Kita coba lihat kembali scatter plot antara `Sales` dan `Profit`
+```{r}
+plot(copiers_new$Sales, copiers_new$Profit)
+```
+
+Kita akan membuat model regresi linier dengan menggunakan seluruh data (termasuk outlier)
+```{r}
+model_outlier <- lm(formula = Profit ~ Sales, data = copiers_new)
+```
+
+Kita akan coba bandingkan model regresi linier tanpa dan dengan outlier
+```{r}
+plot(copiers_new$Sales, copiers_new$Profit)
+abline(model_outlier,col= "red")
+abline(model_1,col= "blue")
+```
+
+Berdasarkan plot di atas diketahui bahwa outlier pada data copiers tidak mempengaruhi garis regresi yang dibentuk/low influence (jika dilihat garis regresi model tanpa dan dengan outlier) hampir sejajar.  Kita akan coba mengecek nilai goodness of fit nya.
+
+Perbandingan goodness of fit model tanpa dan dengan outlier
+```{r}
+# model tanpa outlier
+summary(model_1)$r.squared
+
+# model dengan outlier 
+summary(model_outlier)$r.squared
+```
+
+> karena r-squared model dengan outlier menambah nilai r-squared maka outlier lebih baik dipertahankan
+
+
+**Dive Deeper**
+
+1. Buatlah model linier regresi dengan nilai outlier yang lebih ekstrem, yaitu dengan menambahkan nilai Sales pada observasi ke-59 dengan 3000.
+```{r}
+copiers_new2 <- copiers_new
+copiers_new2[59,"Sales"] <- copiers_new2[59,"Sales"] + 3000
+
+copiers_new2[59,]
+```
+
+2. Bandingkan model linier regresi  
+buatkan plot yang berisi garis linear model dengan outlier, tanpa outlier, dan outlier yang ekstrem
+
+- Tanpa outlier `(model_1)`
+- Dengan outlier `(model_outlier)`
+- Dengan outlier yang lebih ekstrim `(model_outlier3000)`
+```{r}
+model_outlier3000 <- lm(formula = Profit ~ Sales,data = copiers_new2)
+
+plot(copiers_new2$Sales, copiers_new2$Profit)
+abline(model_1, col="red")
+abline(model_outlier, col="blue")
+abline(model_outlier3000, col="green")
+```
+
+
+> dari visulisasi model dengan outlier extreme low influence
+
+3. Bandingkan goodness of fit model linier regresi  
+
+- Tanpa outlier `(model_no.outlier)`
+- Dengan outlier `(model_outlier)`
+- Dengan outlier yang lebih ekstrim `(model_outlier3000)`
+```{r}
+summary(model_1)$r.squared
+summary(model_outlier)$r.squared
+summary(model_outlier3000)$r.squared
+
+```
+
+> jika ada outlier ekstreme, buang outlier karena mengurangi nilai rsquared
+
+
+Contoh outlier (menambahkan nilai profit pada observasi ke-59 dengan nilai 3000) yang high influence
+```{r}
+copiers_new3 <- copiers_new
+copiers_new3[59,"Profit"] <- copiers_new3[59,"Profit"] + 3000
+
+copiers_new3[59,]
+```
+
+Membandingkan model linier regresi  
+
+- Tanpa outlier `(model_no.outlier)`
+- Dengan outlier `(model_outlier)`
+- Dengan outlier yang lebih ekstrim `(model_outlier3000)`
+- Dengan outlier profit yang lebih ekstrim `(model_outlier3000.profit)`
+```{r}
+model_outlier_profit <- lm(formula = Profit ~ Sales,data = copiers_new3)
+
+
+plot(copiers_new3$Sales, copiers_new3$Profit)
+abline(model_1, col="red")
+abline(model_outlier, col="blue")
+abline(model_outlier3000, col="green")
+abline(model_outlier_profit, col="black")
+
+plot(copiers_new$Sales, copiers_new$Profit)
+abline(model_1, col="red")
+abline(model_outlier, col="blue")
+abline(model_outlier3000, col="green")
+abline(model_outlier_profit, col="black")
+```
+
+
+
+
+> model dengan outlier profit ekstreme incluence high
+
+
+Membandingkan goodness of fit model linier regresi  
+
+- Tanpa outlier `(model_no.outlier)`
+- Dengan outlier `(model_outlier)`
+- Dengan outlier yang lebih ekstrim `(model_outlier3000)`
+- Dengan outlier profit yang lebih ekstrim `(model_outlier3000.profit)`
+```{r}
+summary(model_1)$r.squared
+summary(model_outlier)$r.squared
+summary(model_outlier3000)$r.squared
+summary(model_outlier_profit)$r.squared
+```
+
+> karena outlier ekstreme baru mengurangi r.squared, buang outlier
+
+**Summmary**
+
+1. mengaplikasikan model untuk mempreiksi dari data yang baru bisa menggunakan function `predict()`
+2. dalam kasus regresi kita bisa menggunakan metric berikut untuk evaluasi model
+  - MSE (Mean Square Error)
+  - RMSE (Root Mean Square Error)
+  - MAE (Mean Absolute Error)
+  MSE sangat agresif atau sensitif terhadap besar/kecilnya nilai error. MSE dipakai untuk membandingkan beberapa model. MSE tidak bisa langsung diintepretasikan. MSE bisa menjadi warning ada error yang besar ketika hasilnya sangat jauh berbeda ketika dibandingkan dengan model lain (hal ini karnea sifat MSE yang menggandakan error). Sedangkan MAE tidak sensitif thd error. MAE dan RMSE bisa langsung diimplementasikan ke data.
+  
+  
+  jika diketahui MAE 105.84:
+  
+implementasi MAE:
+> jika hasil prediksi 1000
+> actual value ada di 1000 - 105.84
+> actual value ada di 1000 + 105.84
+
+perhitungan berikut bisa diterapkan juga di RMSE
+
+3. Ketika memiliki nilai outlier pada data jangan langsung di take out, kita pelu explore lebih terkait nilai outlier tersebut. Bisa jadi nilai tersebut hanya nilai yang besar pada data dan sejalan dengan garis regresi yang terbentuk.
+
+4. inti dari outlier/leverage influence adalah terdapat outlier yang mempengaruhi model dan ada outlier yang tidak mempengaruhi m`odel. untuk mengetahui apakah outlier tersebut perlu kita take out atau tidak perlu kita bandingkan model dengan atau tanpa outlier dan bandingkan visualisasi dan r squarenya
+
+Data Science workflow:
+1. ask interesting question (ajukan pertanyaan/ apa yang ingin di analisa)
+2. gather the data (pastikan sudah data)
+3. data cleaning/data wrangling
+4. Exploratory Data Analysis (EDA)
+5. Modeling (training data / membuat model dari data)
+6. Evaluasi model (cek error)
+7. gather insight
+8. deployment (menggunakan model dan analisa untuk membantu mengambil keputusan)
+
+--- end of day 2 ---
+
+
+# Regression Model II
+
+## Multiple Linear Regression
+
+y = inequality
+x = all predictor
+
+`formula = y ~ .` (menggunakan semua prediktor/x)
+
+Regression model between `Inequality` and all predictors
+```{r}
+crime <- crime %>% 
+  select(-predicted)
+crime
+
+crime_multiple <- lm(formula = inequality ~ . , data = crime)
+summary(crime_multiple)
+```
+
+> variabel yang berpengaruh: gdp, crime_rate, mean_education, is_south1
+> r-squared 0.91: model tersebut menggambarkan 91.1% variansi target variable
+
+```{r}
+levels(crime$is_south)
+```
+
+> secara default lm() aka membuat levels pertama pada data kategorik sebagai base level
+> slope base level sudah dijelaskan oleh variable level yang lain
+
+
+y = b0 + b1*x
+
+1. Model regesi yang diperoleh:
+
+$$ y = b0 + b1 * x1 + b2 * x2 + .... + bn * xn.$$
+
+$$ inequlity =  330.041730 - 0.383670 * percent_m + 18.794 * is_south1 + -1.067204 * mean_education + ... $$
+
+> b0 = 330.0417 
+> ketika seluruh prediktor 0, inequality = 330.0417
+
+
+2. Pengaruh variabel prediktor terhadap target
+
+- Berdasarkan nilai p-value yang diperoleh di atas dapat disimpulkan bahwa mean_education, gdp, dan crime_rate berpengaruh terhadap inequality
+- **numerical variable**: est. mean_education = -1.067204. Ketika terjadi kenaikan mean_education sebesar 1 tahun, maka akan menurunkan tingkat kesenjangan pendapatan sebesar 1.067204
+- **categorical variable**: est. is_south1 = 18.794908
+
+is_south: 0 1
+1: observasi beradad di neagara bagian selatan
+0: observasi beradad di neagara bukan bagian selatan
+
+y = 330.041730 + 18.794908 * is_south
+
+ketika data ada di negara bagian selatan
+y = 330.041730 + 18.794908 * 1
+
+> ketika negara berada di bagian selatan, menaikkan nilai inequality sebesar 18.794
+
+
+a. is_south = 1 (berada di bagian selatan)
+
+jika suatu negara berada di bagian selatan, maka tingkat inequality yang diperoleh sebesar b0 + 18.794908
+
+b. is_south = 0 (tidak berada di bagian selatan)
+
+jika suatu negara tidak berada di bagian selatan, maka tingkat inequality yang diperoleh sebesar b0 saja
+
+
+"============================================="
+
+### Dumy variable
+
+Sebelum dilakukan linier regresi, prediktor bertipe kategorik akan ditransformasi menjadi variabel dummy. Variabel dummy yang dibentuk berjumlah banyaknya kategori (jumlah level) dari suatu prediktor kategorik dikuraning 1 (k - 1). Contoh:
+```{r}
+gol_darah <- data.frame(gol.darah = c("A", "A", "O", "B", "B", "AB"))
+gol_darah
+```
+
+> levels 4: A B O AB
+
+```{r}
+data.frame(gol.darahA = ifelse(gol_darah$gol.darah == "A", 1, 0),
+           gol.darahB = ifelse(gol_darah$gol.darah == "B", 1, 0),
+           gol.darahO = ifelse(gol_darah$gol.darah == "O", 1, 0))
+```
+
+How to interprate the result, if the category more than 2 category:
+
+- est. gol.darahA = 0.7, nilai y ketika golongan darah nya adalah A sebesar **b0 + est. gol.darahA**
+- est. gol.darahB = XXXX, nilai y ketika golongan darah nya adalah B sebesar **b0 + est. gol.darahB**
+- est. gol.darahO = XXXX, nilai y ketika golongan darah nya adalah O sebesar **b0 + est. gol.darahO**
+- nilai y ketika golongan darah nya adalah AB sebesar **b0 saja** (b0 + est. gol.darahA * 0 + est. gol.darahB * 0 + est. gol.darahAO * 0)
+
+jika coefficint goldar:
+bo = 125.5
+a = 0.77
+b = 0.66
+o = 0.55
+
+
+y = 125.5 + 0.77 x goldarA + 0.66 x goldarB  + 0.55 x goldarO
+
+jika pasien memiliki goldar B:
+y = 125.5 + 0.77 x (0) + 0.66 x (1)  + 0.55 x (0)
+y = 125.5 + 0.66
+
+jika pasien memiliki goldar AB:
+y = 125.5 + 0.77 x (0) + 0.66 x (0)  + 0.55 x (0)
+y = 125.5
+
+"============================================="
+
+
+"============================================="
+
+** summary**
+
+1. untuk memasukkan semua kolom (keculai kolom target variable) menjadi prediktor dalam function `lm()` cukup menggunakan tanda .
+contoh: `lm(formula = inequality ~ . , data = crime)`
+
+1. untuk mengambil intepretasi linear model dengan 1 prediktor dan multiple predictor itu mirip
+contoh:
+
+                       Estimate Std. Error t value Pr(>|t|)    
+(Intercept)          330.041730 120.913748   2.730  0.01036 *  
+percent_m             -0.383670   0.299996  -1.279  0.21042    
+is_south1             18.794908   9.696399   1.938  0.06173 .  
+mean_education        -1.067204   0.448779  -2.378  0.02375 * 
+
+rumus dasar lm > $$ y = b0 + b1 * x1 + b2 * x2 + .... + bn * xn.$$
+
+
+$$inequality = 330.041 + (-0.383) * percent_m + 18.794 * is_south1 + (-1.067) * mean_eduation$$
+
+2. untuk memasukkan data bertipe factor kedalam function `lm()` perlu dilakukan transfromasi dummy variable. Variabel dummy yang dibentuk berjumlah banyaknya kategori (jumlah level) dari suatu prediktor kategorik dikurangi 1 (k - 1)
+
+
+"======================================"
+
+3. Goodness of fit
+```{r}
+summary(crime_multiple)
+```
+
+
+R-Squared = 0.9118, model "crime_multiple" dapat menjelaskan informasi inequlity sebesar 91.18%
+
+Model mana yang lebih baik `model_crime` atau `crime_multiple`?
+```{r}
+summary(model_crime)$r.squared
+summary(crime_multiple)$r.squared
+```
+
+- R-square "model_crime" (1 prediktor) = 78.15%   
+- R-square "crime_multiple" (multiple prediktor) = 91.18%
+
+> model dengan multiple prediktor lebih baik dibanding 1 prediktor
+
+Coba buat model linier regresi untuk memprediksi inequality berdasarkan mean_eduaction, gdp, crime_rate, dan is_south
+```{r}
+crime_multiple4 <- lm(formula = inequality ~ mean_education + gdp + crime_rate + is_south, data = crime)
+summary(crime_multiple4)
+
+```
+
+cek r-squared semua model
+```{r}
+summary(model_crime)$r.squared # 1 prediktor
+summary(crime_multiple4)$r.squared # 4 prediktor
+summary(crime_multiple)$r.squared # 15 prediktor
+```
+
+
+- inequality tidak hanya dipengaruhhi gpd tetapai dengan variabel yang lain dilihat dari nilai rsquared
+- semakin banyak prediktor semain besar r-squared
+- 15 predictor lebih mampu menjelaskan target
+
+gdp menggambarkan 78.15% dari inequality, 4 prediktor (mean_education + gdp + crime_rate + is_south) dapat menggambarkan 87.76% dari inequality, dan kelima belas prediktor dapat menggambarkan 91.18% dari inequality.
+
+```{r}
+crime_xx <- crime
+crime_xx <- crime_xx %>% 
+  mutate(mean_ukuran_Sepatu = round(rnorm(nrow(crime),42),1))
+
+crime_xx_model <- lm(inequality ~ ., data = crime_xx)
+summary(crime_xx_model)
+```
+
+```{r}
+summary(model_crime)$r.squared # 1 prediktor
+summary(crime_multiple4)$r.squared # 4 prediktor
+summary(crime_multiple)$r.squared # 15 prediktor
+summary(crime_xx_model)$r.squared # 15 + 1 contoh
+```
+
+
+
+cek adj r-squared semua model
+```{r}
+summary(model_crime)$adj.r.squared # 1 prediktor
+summary(crime_multiple4)$adj.r.squared # 4 prediktor
+summary(crime_multiple)$adj.r.squared # 15 prediktor
+summary(crime_xx_model)$adj.r.squared # 15 + 1 contoh
+```
+
+
+
+Perbedaan R Square dan Adj R Square:
+
+- R Square digunakan untuk melihat goodnes of fit suatu model
+- untuk melihat goodnes of fit multiple linear regression lebih baik menggunakan adj.rsquared karena adj.rsquared mempertimbankan jumlah variabel prediktor 
+- Adj R Square digunakan untuk membandingkan kebaikan beberapa model
+
+
+Bagaimana kriteria model linier regresi sudah dikatakan baik:
+1. data sudah bersih dari outlier yang high influence
+2. evaluasi model dengan error yang paling kecil (melihat RMSE, MSE, MAE)
+3. model yang prediktor relevan (model yang simpel, jumlah prediktornya sedikit)
+4. model dengan adj.rsquared yang tinggi
+5. model linear memenuhi uji asumsi
+
+From linear regression model `crime_multiple4`, predict "inequality" value and store it in `pred_ineq` object
+```{r}
+pred_ineq <- predict(object = crime_multiple4, newdata = crime)
+```
+
+
+Model evaluation (melakukan evaluasi terhadap model, bisa dengan menghitung nilai errornya)
+```{r}
+RMSE(pred_ineq, crime$inequality)
+MAE(pred_ineq, crime$inequality)
+```
+
+```{r}
+RMSE(predict(crime_multiple,crime), crime$inequality)
+MAE(predict(crime_multiple,crime), crime$inequality)
+```
+
+> model dengan seluruh prediktor lebih akuran dibanding model yang hanya menggunakan 4 prediktor
+
+
+## Step-wise Regression {.tabset}
+
+Pemilihan faktor/prediktor yang digunakan pada analisis regresi dapat dilakukan dengan:
+
+1. Bisnis knowledge
+2. Statistics tools
+
+- Melihat nilai korelasi (numerik)
+
+```{r}
+ggcorr(crime, label = T)
+```
+
+- Membuat baseline model (using all predictors), kemudian pilih prediktor yang signifikan berpengaruh terhadap target
+- Based on data visualizatin, misal scatter plot, dll
+- Memilih prediktor berdasarkan hasil step-wise regression (step-wise regression menggunakan nilai AIC sebagai pembanding)
+
+a. Most time, it would yield sensible results that are good enough 
+b. It is not guaranteed to yield the global optima (menyarankan kombinasi prediktor yang semuanya signifikan dengan error terkecil dan paling sederhana)
+
+Hal ini karena step-wise regression merupakan suatu metode yang sifatnya adalah "greedy". https://brilliant.org/wiki/greedy-algorithm/#:~:text=A%20greedy%20algorithm%20is%20a,to%20solve%20the%20entire%20problem.
+
+> stepwise membantu kita memilih predikotr yang 'baik' untuk model kita berdasarkan nilai AIC
+
+> AIC = jumlah information loss
+> AIC paling rendah
+
+
+"================================================="
+Ilustrasi greedy algorithm:
+
+Akan diterapkan greedy algorithm pada sebuah vending machine. Vending mchine tersebut menyiapkan uang kembalian berupa pecahan 1 dollar, 50 sen, 20 sen, 10 sen, 7 sen, 2 sen, 1 sen.
+
+Suatu ketika terdapat pembeli yang memasukkan uang sebsar 3 dollar ke vending machine tersebut dengan total pembelian sebesar 1.86 dollar. Pembeli tersebut harus menerima uang kembalian sebesar 1.14 dollar 
+
+Greedy algorithm:
+
+1. Compute balance
+2. Find the largest coin that doesnt exceed balance, return that coin
+3. Repeat (step 1-2)
+
+0.14 - 10 sen
+0.4 - 2 sen 2x
+
+
+Maka greedy algorithm akan memberikan uang kembalian dengan pecahan 1 dollar, 10 sen, 2 sen, dan 2 sen
+
+Human:
+
+Akan memilih pecahan uang kembalian yang lebih efisien dengan hasil yang sama, makan pecahan yang akan dipilih adalah 1 dollar, 7 sen, dan 7 sen
+
+
+"================================================="
+
+```{r}
+# model tanpa prediktor
+model_none <- lm(inequality ~ 1, data = crime)
+# model dengan semua prediktor
+model_all <- lm(inequality ~ ., data = crime)
+```
+
+Secara default fungsi `step()` akan melakukan step-wise regression dengan metode "backward" jika model awal yang di input adalah model linier regresi dengan semua prediktor
+
+### Backward
+
+**Backward elimination** melakukan pengurangan prediktor (membuang prediktor dari yang paling tidak signifikan mempengaruhi target) dari model yang mencakup seluruh prediktor
+
+```{r}
+backward <- step(object = model_all, direction = "backward")
+```
+
+
+> backward stepwise akan membuang variabel yang membuat nilai AIC menjadi paling kecil
+
+### Forward
+
+**Forward selection** melakukan penambahan prediktor (menambah prediktor dari yang paling signifikan mempengaruhi target) dari model tanpa prediktor
+
+```{r}
+forward <- step(object = model_none, direction = "forward", scope = list(lower=model_none, upper=model_all))
+```
+
+
+**summary**
+
+1. untuk memasukkan semua kolom (keculai kolom target variable) menjadi prediktor dalam function `lm()` cukup menggunakan tanda .
+contoh: `lm(formula = inequality ~ . , data = crime)`
+
+2. untuk mengambil intepretasi linear model dengan 1 prediktor dan multiple predictor itu mirip
+contoh:
+
+                       Estimate Std. Error t value Pr(>|t|)    
+(Intercept)          330.041730 120.913748   2.730  0.01036 *  
+percent_m             -0.383670   0.299996  -1.279  0.21042    
+is_south1             18.794908   9.696399   1.938  0.06173 .  
+mean_education        -1.067204   0.448779  -2.378  0.02375 * 
+
+rumus dasar lm > $$ y = b0 + b1 * x1 + b2 * x2 + .... + bn * xn.$$
+
+
+$$inequality = 330.041 + (-0.383) * percent_m + 18.794 * is_south1 + (-1.067) * mean_eduation$$
+
+3. untuk memasukkan data bertipe factor kedalam function `lm()` perlu dilakukan transfromasi dummy variable. Variabel dummy yang dibentuk berjumlah banyaknya kategori (jumlah level) dari suatu prediktor kategorik dikurangi 1 (k - 1)
+
+4. stepwsie: cara statistik mencari prediktor yang baik untuk model berdasarkan nilai information loss (AIC). Stepwise bekerja menggunakan greedy algorithm
+- backward
+- forward
+- both
+
+--- end of day 3 ---
+
+### Both 
+
+**Both** mengabungkan tahapan backward dan forward
+
+```{r}
+both1 <- step(object = model_all, direction = "both", scope = list(lower=model_none, upper = model_all))
+```
+
+```{r}
+both2 <- step(object = model_none, direction = "both", scope = list(lower=model_none, upper =model_all))
+```
+
+
+
+Perbandingan nilai adjusted r-squared
+```{r}
+
+```
+
+
+## Confidence Interval
+
+Kita coba lihat kembali hasil prediksi Profit, ketika Sales = 4797
+```{r}
+predict(model_1, data.frame(Sales = 4797))
+```
+
+95% confidence interval for Profit, when Sales = 4797 
+```{r}
+predict(object=model_1, newdata=data.frame(Sales=4797), 
+        interval="confidence", level=0.95)
+```
+
+Visualization of confidence interval
+```{r}
+library(ggplot2)
+plot <- ggplot(data = copiers, mapping = aes(x = Sales,y = Profit)) +
+  geom_point() +
+  geom_smooth(method = "lm", level = 0.95) +
+  labs(title = "Linear Regression of Profit based on Sales")
+
+plotly::ggplotly(plot)
+```
+
+# Limitations
+
+Linear regression models, even when considered to be the powerhouse of statistics came with its limitations and assumptions.
+
+- Linear regressions are best fitted on data where a linear relationship between the predictor variables and target exist.
+- Simple/multiple regression models can be sensitive to outliers (recall the chapter regarding leverage and influence)
+
+## Assumption Checking
+
+### Linearity (x dan y)
+
+**Dilakukan sebelum membuat model** untuk memastikan bahwa variabel prediktor dengan target memiliki hubungan yang linear. Dapat dicek dengan menghitung nilai korelasi menggunakan function `ggcorr()` dari library `GGally` 
+```{r}
+ggcorr(crime, label = T)
+```
+
+### Normality error
+
+Dilakukan dengan cara:
+
+1. Membuat visualisasi dari error yang dihasilkan (histogram)
+```{r}
+hist(both1$residuals)
+```
+
+2. Melakukan uji statistik menggunakan fungsi `shapiro.test()`
+
+Shapiro-Wilk hypothesis:
+
+- H0: error/residual berdistribusi normal
+- H1: error/residual tidak berdistribusi normal
+
+```{r}
+shapiro.test(both1$residuals)
+```
+
+
+### Homoscedasticity
+
+```{r}
+knitr::include_graphics("assets/homo-heteroscedasticity.jpg")
+```
+
+
+Dilakukan dengan cara:
+
+1. Membuat visualisasi antara hasil prediksi dengan error (scatter plot)
+```{r}
+plot(both1$fitted.values, both1$residuals)
+abline(h=0, col = "red")
+```
+
+2. Melakukan uji Breusch-Pagan menggunakan fungsi `bptest()` dari library `lmtest`
+
+Breusch-Pagan hypothesis :
+
+- H0: Homoscedasticity
+- H1: Heteroscedasticity
+
+```{r}
+library(lmtest)
+bptest(both1)
+```
+
+
+### No-multicolinearity (antar x/prediktor tidak saling berkorelasi)
+
+Dilakukan dengan menghitung nilai vif menggunakan function `vif()` dari library `car`. Ketika nilai VIF lebih kecil dari 10, asumsi no-multicolinearity terpenuhi
+```{r}
+library(car)
+vif(both1)
+```
+ 
+
+
+
+
+
+
+Reference:
+- [Machine Learning Specialization opening slide](https://docs.google.com/presentation/d/1q56Tw4UHHXKLbebp8XmKuEAw21c4ZKZKTHxAyUvRObI/edit?usp=sharing)   
+- [Leverage & Influence Simulation](https://seeing-theory.brown.edu/regression-analysis/index.html#section1)
+- [Regression error evaluation metrics](https://towardsdatascience.com/what-are-the-best-metrics-to-evaluate-your-regression-model-418ca481755b)
+- [Greedy Algorithm](https://brilliant.org/wiki/greedy-algorithm/#:~:text=A%20greedy%20algorithm%20is%20a,to%20solve%20the%20entire%20problem)
+- [ask algo](https://askalgo.netlify.app/#linear-regression)
+
+
